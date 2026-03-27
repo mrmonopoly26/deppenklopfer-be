@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import (
+    Boolean,
     CheckConstraint,
     DateTime,
     ForeignKey,
@@ -164,6 +165,150 @@ class BalanceTransaction(Base):
     )
     amount_cents: Mapped[int] = mapped_column(Integer)
     reason: Mapped[str] = mapped_column(String(128))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class GameHand(Base):
+    __tablename__ = "game_hands"
+    __table_args__ = (
+        UniqueConstraint("table_id", "hand_number", name="uq_game_hands_table_number"),
+    )
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    table_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("tables.id"), index=True
+    )
+    hand_number: Mapped[int] = mapped_column(Integer)
+    dealer_seat: Mapped[int] = mapped_column(Integer)
+    forehand_seat: Mapped[int] = mapped_column(Integer)
+    phase: Mapped[str] = mapped_column(String(32), default="bidding")
+    contract_type: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    contract_suit: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    called_ace_suit: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    declarer_user_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("users.id"), nullable=True, index=True
+    )
+    partner_user_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("users.id"), nullable=True, index=True
+    )
+    current_turn_seat: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    trick_number: Mapped[int] = mapped_column(Integer, default=1)
+    result_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    closed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+
+class HandCard(Base):
+    __tablename__ = "hand_cards"
+    __table_args__ = (
+        UniqueConstraint(
+            "hand_id",
+            "user_id",
+            "suit",
+            "rank",
+            name="uq_hand_cards_hand_user_card",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    hand_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("game_hands.id"), index=True
+    )
+    table_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("tables.id"), index=True
+    )
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), index=True)
+    seat_number: Mapped[int] = mapped_column(Integer)
+    suit: Mapped[str] = mapped_column(String(16))
+    rank: Mapped[str] = mapped_column(String(4))
+    is_played: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class HandBid(Base):
+    __tablename__ = "hand_bids"
+    __table_args__ = (
+        UniqueConstraint("hand_id", "user_id", name="uq_hand_bids_hand_user"),
+        UniqueConstraint("hand_id", "bid_order", name="uq_hand_bids_hand_order"),
+    )
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    hand_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("game_hands.id"), index=True
+    )
+    table_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("tables.id"), index=True
+    )
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), index=True)
+    seat_number: Mapped[int] = mapped_column(Integer)
+    decision: Mapped[str] = mapped_column(String(16))
+    contract_type: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    contract_suit: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    called_ace_suit: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    bid_order: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class HandTrick(Base):
+    __tablename__ = "hand_tricks"
+    __table_args__ = (
+        UniqueConstraint("hand_id", "trick_index", name="uq_hand_tricks_hand_index"),
+    )
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    hand_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("game_hands.id"), index=True
+    )
+    table_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("tables.id"), index=True
+    )
+    trick_index: Mapped[int] = mapped_column(Integer)
+    lead_seat: Mapped[int] = mapped_column(Integer)
+    winner_seat: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class TrickCard(Base):
+    __tablename__ = "trick_cards"
+    __table_args__ = (
+        UniqueConstraint("trick_id", "seat_number", name="uq_trick_cards_trick_seat"),
+        UniqueConstraint("trick_id", "play_order", name="uq_trick_cards_trick_order"),
+    )
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    trick_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("hand_tricks.id"), index=True
+    )
+    hand_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("game_hands.id"), index=True
+    )
+    table_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("tables.id"), index=True
+    )
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), index=True)
+    seat_number: Mapped[int] = mapped_column(Integer)
+    play_order: Mapped[int] = mapped_column(Integer)
+    suit: Mapped[str] = mapped_column(String(16))
+    rank: Mapped[str] = mapped_column(String(4))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

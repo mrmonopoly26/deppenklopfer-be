@@ -13,6 +13,12 @@ FastAPI backend for deppenklopfer (Schafkopf).
 - Realtime table streaming over WebSocket for chat and game events
 - Persistent chat history per table
 - Persistent game round payout recording and user virtual bank balance updates
+- Server-authoritative Schafkopf hand lifecycle over WebSocket
+	- hand start and card dealing (8 cards each)
+	- bidding/pass flow with rufer/wenz/solo resolution
+	- all-pass handling: optional auto-Ramsch if enabled in game modes
+	- strict legal-card validation per contract while playing tricks
+	- automatic hand settlement and balance posting (tariff 10/50 + bonuses)
 
 ## Tech Stack
 
@@ -74,5 +80,21 @@ WebSocket event types currently supported:
 
 - `chat_message`
 - `game_action`
+- `start_hand`
+- `my_hand`
+- `declare_bid`
+- `legal_cards`
+- `play_card`
 - `ping` / `pong`
 - broadcasted lifecycle events (`participant_joined`, `participant_left`)
+
+Additional game stream payloads:
+
+- `game_state` (broadcast): public hand state, bids, current trick, turn seat, result
+- `game_error` (direct): invalid action details for the sending player
+
+Notes:
+
+- Existing `game_action` passthrough is still available for backward compatibility.
+- `start_hand` currently requires 4 participants at the table.
+- Ramsch is enabled when `"ramsch"` is included in `table.config.game_modes`.
