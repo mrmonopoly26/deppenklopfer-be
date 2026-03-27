@@ -1,0 +1,31 @@
+from app.schemas.dto import (
+    AuthResponse,
+    BalanceResponse,
+    ChangeRequestConfirm,
+    ChangeRequestCreate,
+    ChatHistoryItem,
+    LoginRequest,
+    PayoutItem,
+    RegisterRequest,
+    RoundCompleteRequest,
+    TableConfigPayload,
+    TableCreateRequest,
+    TableJoinRequest,
+    TableResponse,
+)
+
+__all__ = [
+    "AuthResponse",
+    "BalanceResponse",
+    "ChangeRequestConfirm",
+    "ChangeRequestCreate",
+    "ChatHistoryItem",
+    "LoginRequest",
+    "PayoutItem",
+    "RegisterRequest",
+    "RoundCompleteRequest",
+    "TableConfigPayload",
+    "TableCreateRequest",
+    "TableJoinRequest",
+    "TableResponse",
+]
