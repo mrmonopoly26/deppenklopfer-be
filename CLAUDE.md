@@ -50,3 +50,7 @@ Keep every file under **400 lines**. Exceptions are allowed when a single cohesi
 - All game state lives server-side; WebSocket messages are the only interface for in-progress hands
 - SQLite auto-creates on startup (`deppenklopfer.db`); swap to PostgreSQL by changing `DATABASE_URL` in config
 - CORS is open (`*`) in the current MVP config
+
+### Game rules
+A full set of rules is located in `docs/schafkopf_rules.md`.
+
