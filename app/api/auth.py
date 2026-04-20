@@ -58,6 +58,11 @@ def me(current_user: User = Depends(get_current_user)) -> dict:
     }
 
 
+@router.post("/refresh", response_model=AuthResponse)
+def refresh_token(current_user: User = Depends(get_current_user)) -> AuthResponse:
+    return AuthResponse(access_token=create_access_token(current_user.id))
+
+
 @router.post("/change-request")
 def create_change_request(
     payload: ChangeRequestCreate,

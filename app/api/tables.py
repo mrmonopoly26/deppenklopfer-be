@@ -5,7 +5,6 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user
 from app.db.session import get_db
 from app.models import (
-    BalanceTransaction,
     ChatMessage,
     GameRound,
     Table,
@@ -15,7 +14,7 @@ from app.models import (
 )
 from app.schemas import (
     ChatHistoryItem,
-    RoundCompleteRequest,
+    RoundItem,
     TableConfigPayload,
     TableCreateRequest,
     TableJoinRequest,
@@ -192,81 +191,32 @@ def get_chat_history(
     return [ChatHistoryItem.model_validate(message) for message in messages]
 
 
-@router.post("/{game_code}/rounds/complete")
-def complete_round(
+@router.get("/{game_code}/rounds", response_model=list[RoundItem])
+def get_rounds(
     game_code: str,
-    payload: RoundCompleteRequest,
-    current_user: User = Depends(get_current_user),
+    limit: int = Query(default=50, ge=1, le=200),
     db: Session = Depends(get_db),
-) -> dict:
+    _: User = Depends(get_current_user),
+) -> list[RoundItem]:
     table = db.scalar(select(Table).where(Table.game_code == game_code))
     if not table:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Table not found"
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Table not found")
+
+    rounds = db.scalars(
+        select(GameRound)
+        .where(GameRound.table_id == table.id)
+        .order_by(GameRound.created_at.desc())
+        .limit(limit)
+    ).all()
+    rounds_asc = list(reversed(rounds))
+    return [
+        RoundItem(
+            id=r.id,
+            summary=r.summary,
+            payouts_eur={uid: cents / 100 for uid, cents in r.payouts_json.items()},
+            created_at=r.created_at,
         )
+        for r in rounds_asc
+    ]
 
-    participant = db.scalar(
-        select(TableParticipant).where(
-            TableParticipant.table_id == table.id,
-            TableParticipant.user_id == current_user.id,
-        )
-    )
-    if not participant:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only table participants may submit rounds",
-        )
 
-    payouts: dict[str, int] = {}
-    euro_per_point_cents = table.config.euro_per_point_cents
-    base_reward_cents = table.config.base_reward_cents
-
-    for payout_item in payload.payouts:
-        if payout_item.amount_eur is None and payout_item.points is None:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Each payout needs amount_eur or points",
-            )
-
-        if payout_item.amount_eur is not None:
-            amount_cents = round(payout_item.amount_eur * 100)
-        else:
-            points = payout_item.points or 0
-            amount_cents = points * euro_per_point_cents
-            if points > 0:
-                amount_cents += base_reward_cents
-            elif points < 0:
-                amount_cents -= base_reward_cents
-
-        payouts[payout_item.user_id] = amount_cents
-
-    game_round = GameRound(
-        table_id=table.id,
-        submitted_by_user_id=current_user.id,
-        summary=payload.summary,
-        payouts_json=payouts,
-    )
-    db.add(game_round)
-    db.flush()
-
-    for payout_item in payload.payouts:
-        user = db.scalar(select(User).where(User.id == payout_item.user_id))
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Unknown user: {payout_item.user_id}",
-            )
-
-        amount_cents = payouts[payout_item.user_id]
-        user.balance_cents += amount_cents
-        transaction = BalanceTransaction(
-            user_id=user.id,
-            table_id=table.id,
-            round_id=game_round.id,
-            amount_cents=amount_cents,
-            reason=payout_item.reason,
-        )
-        db.add(transaction)
-
-    db.commit()
-    return {"message": "Round recorded", "round_id": game_round.id}

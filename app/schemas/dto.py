@@ -28,8 +28,11 @@ class ChangeRequestConfirm(BaseModel):
     token: str
 
 
+GameMode = Literal["ramsch", "rufspiel", "solo", "wenz"]
+
+
 class TableConfigPayload(BaseModel):
-    game_modes: list[str] = Field(default_factory=lambda: ["rufspiel", "solo", "wenz"])
+    game_modes: list[GameMode] = Field(default_factory=lambda: ["rufspiel", "solo", "wenz"])
     euro_per_point: float = Field(default=0.1, ge=0)
     base_reward: float = Field(default=1.0, ge=0)
 
@@ -71,18 +74,24 @@ class ChatHistoryItem(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class PayoutItem(BaseModel):
-    user_id: str
-    amount_eur: float | None = None
-    points: int | None = None
-    reason: str = Field(default="round_payout", min_length=1, max_length=128)
-
-
-class RoundCompleteRequest(BaseModel):
-    summary: str = Field(min_length=1, max_length=2000)
-    payouts: list[PayoutItem]
-
-
 class BalanceResponse(BaseModel):
     user_id: str
     balance_eur: float
+
+
+class TransactionItem(BaseModel):
+    id: str
+    table_id: str
+    round_id: str
+    amount_eur: float
+    reason: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class RoundItem(BaseModel):
+    id: str
+    summary: str
+    payouts_eur: dict[str, float]
+    created_at: datetime

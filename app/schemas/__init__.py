@@ -5,13 +5,13 @@ from app.schemas.dto import (
     ChangeRequestCreate,
     ChatHistoryItem,
     LoginRequest,
-    PayoutItem,
     RegisterRequest,
-    RoundCompleteRequest,
+    RoundItem,
     TableConfigPayload,
     TableCreateRequest,
     TableJoinRequest,
     TableResponse,
+    TransactionItem,
 )
 
 __all__ = [
@@ -21,11 +21,11 @@ __all__ = [
     "ChangeRequestCreate",
     "ChatHistoryItem",
     "LoginRequest",
-    "PayoutItem",
     "RegisterRequest",
-    "RoundCompleteRequest",
+    "RoundItem",
     "TableConfigPayload",
     "TableCreateRequest",
     "TableJoinRequest",
     "TableResponse",
+    "TransactionItem",
 ]
