@@ -19,6 +19,7 @@ router = APIRouter(tags=["ws"])
 async def table_stream(websocket: WebSocket, game_code: str, token: str) -> None:
     user_id = decode_access_token(token)
     if not user_id:
+        await websocket.accept()
         await websocket.close(code=1008)
         return
 
@@ -28,6 +29,7 @@ async def table_stream(websocket: WebSocket, game_code: str, token: str) -> None
         user = db.scalar(select(User).where(User.id == user_id))
         table = db.scalar(select(Table).where(Table.game_code == game_code))
         if not user or not table:
+            await websocket.accept()
             await websocket.close(code=1008)
             return
 
@@ -38,6 +40,7 @@ async def table_stream(websocket: WebSocket, game_code: str, token: str) -> None
             )
         )
         if not participant:
+            await websocket.accept()
             await websocket.close(code=1008)
             return
 
@@ -68,7 +71,7 @@ async def table_stream(websocket: WebSocket, game_code: str, token: str) -> None
                 await websocket.send_json({"type": "pong", "timestamp": datetime.now(UTC).isoformat()})
 
             elif event_type == "chat_message":
-                text = str(payload.get("message", "")).strip()
+                text = str(payload.get("message", "")).strip()[:500]
                 if text:
                     db.add(ChatMessage(
                         table_id=table.id,
@@ -138,6 +141,9 @@ async def table_stream(websocket: WebSocket, game_code: str, token: str) -> None
                 await handle_play_card(db, table, hand, user, participant, seats, payload, websocket)
 
     except WebSocketDisconnect:
+        # Roll back any uncommitted transaction so the session is clean before close.
+        # A handler can leave the session dirty if an error escapes its try/except.
+        db.rollback()
         if table_id:
             manager.disconnect(table_id, websocket)
             await manager.broadcast(table_id, {
