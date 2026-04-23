@@ -20,10 +20,14 @@ ACTIVE_HAND_PHASES = {"bidding", "playing", "scoring"}
 
 
 def active_hand(db: Session, table_id: str) -> GameHand | None:
+    # populate_existing forces SQLAlchemy to refresh from DB rather than returning
+    # a stale identity-map entry — critical for long-lived WebSocket sessions where
+    # another session may have advanced the hand state since the object was first loaded.
     return db.scalar(
         select(GameHand)
         .where(GameHand.table_id == table_id, GameHand.phase.in_(ACTIVE_HAND_PHASES))
         .order_by(GameHand.hand_number.desc())
+        .execution_options(populate_existing=True)
     )
 
 
