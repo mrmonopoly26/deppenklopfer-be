@@ -17,7 +17,14 @@ from app.models import (
     TrickCard,
     User,
 )
-from app.services.schafkopf_rules import build_deck, next_seat
+from app.services.schafkopf_rules import (
+    PHASE_BIDDING,
+    PHASE_CLOSED,
+    TABLE_STATUS_PLAYING,
+    TABLE_STATUS_WAITING,
+    build_deck,
+    next_seat,
+)
 from app.services.schafkopf_scoring import settle_hand
 
 
@@ -47,11 +54,11 @@ def start_hand(db: Session, table: Table, participants: list[TableParticipant]) 
         hand_number=hand_number,
         dealer_seat=dealer_seat,
         forehand_seat=forehand_seat,
-        phase="bidding",
+        phase=PHASE_BIDDING,
         current_turn_seat=forehand_seat,
     )
     db.add(hand)
-    table.status = "playing"
+    table.status = TABLE_STATUS_PLAYING
     db.flush()
 
     deck = build_deck()
@@ -144,9 +151,9 @@ def close_and_settle_hand(
             reason=f"auto_{hand.contract_type or 'unknown'}",
         ))
 
-    hand.phase = "closed"
+    hand.phase = PHASE_CLOSED
     hand.current_turn_seat = None
-    table.status = "waiting"
+    table.status = TABLE_STATUS_WAITING
     hand.result_json = {
         **settlement.details,
         "summary": settlement.summary,

@@ -24,6 +24,10 @@ FastAPI backend for **Deppenklopfer**, a real-time Schafkopf (German card game) 
 
 Keep every file under **400 lines**. Exceptions are allowed when a single cohesive concept genuinely requires more, but split first.
 
+### No magic strings
+
+All recurring string literals (contract types, hand phases, table statuses, bid decisions, game modes, WebSocket event/message types) must be defined as named constants. Game rule constants live in `app/services/schafkopf_rules.py`; WebSocket protocol constants live in `app/api/ws_state.py`. Never compare or assign a bare string where a constant exists.
+
 ### Layers
 
 - `app/api/ws.py` — WebSocket connection setup and event dispatch (thin router only).
@@ -43,7 +47,7 @@ Keep every file under **400 lines**. Exceptions are allowed when a single cohesi
 1. Client authenticates → JWT
 2. Client creates/joins table via 6-digit code (`app/api/tables.py`)
 3. Client connects WebSocket (`/ws/{table_id}`) — server is authoritative
-4. Server deals 8 cards per player, runs bidding (Rufspiel/Solo/Wenz/Ramsch), validates legal cards, resolves tricks, settles hand, updates `BalanceTransaction`
+4. Server deals 6 cards per player (Kurzes Blatt), runs bidding (Rufspiel/Solo/Wenz/Ramsch), validates legal cards, resolves 6 tricks, settles hand, updates `BalanceTransaction`
 
 ### Key design points
 

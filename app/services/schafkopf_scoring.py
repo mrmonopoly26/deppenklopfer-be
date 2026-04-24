@@ -5,6 +5,12 @@ from dataclasses import dataclass
 from typing import Iterable
 
 from app.services.schafkopf_rules import (
+    CONTRACT_RAMSCH,
+    CONTRACT_RUFER,
+    SCHNEIDER_POINTS,
+    TOTAL_CARD_POINTS,
+    TRICKS_PER_HAND,
+    WINNING_POINTS,
     card_points,
     count_laufende,
     is_trump,
@@ -96,7 +102,7 @@ def settle_hand(
 
     payouts = {user_id: 0 for user_id in seat_to_user.values()}
 
-    if contract_type == "ramsch":
+    if contract_type == CONTRACT_RAMSCH:
         loser_seat = _resolve_ramsch_loser(
             seat_points=dict(seat_points),
             seat_tricks=dict(seat_tricks),
@@ -140,7 +146,7 @@ def settle_hand(
             seat for seat, user in seat_to_user.items() if user == partner_user_id
         )
 
-    if contract_type == "rufer":
+    if contract_type == CONTRACT_RUFER:
         if partner_seat is None:
             raise ValueError("Rufer requires partner")
         declarer_team = {declarer_seat, partner_seat}
@@ -149,17 +155,17 @@ def settle_hand(
 
     declarer_points = sum(seat_points[seat] for seat in declarer_team)
     declarer_tricks = sum(seat_tricks[seat] for seat in declarer_team)
-    declarer_wins = declarer_points >= 61
+    declarer_wins = declarer_points >= WINNING_POINTS
 
-    winner_points = declarer_points if declarer_wins else 120 - declarer_points
-    winner_tricks = declarer_tricks if declarer_wins else 8 - declarer_tricks
+    winner_points = declarer_points if declarer_wins else TOTAL_CARD_POINTS - declarer_points
+    winner_tricks = declarer_tricks if declarer_wins else TRICKS_PER_HAND - declarer_tricks
 
-    base = rufer_rate_cents if contract_type == "rufer" else solo_wenz_rate_cents
+    base = rufer_rate_cents if contract_type == CONTRACT_RUFER else solo_wenz_rate_cents
     amount = base
 
-    if winner_points >= 91:
+    if winner_points >= SCHNEIDER_POINTS:
         amount += schneider_bonus_cents
-    if winner_tricks == 8:
+    if winner_tricks == TRICKS_PER_HAND:
         amount += schwarz_bonus_cents
 
     laufende = 0
@@ -180,7 +186,7 @@ def settle_hand(
         else:
             laufende = 0
 
-    if contract_type == "rufer":
+    if contract_type == CONTRACT_RUFER:
         winner_seats = {
             seat for seat in seat_to_user if ((seat in declarer_team) == declarer_wins)
         }
@@ -206,7 +212,7 @@ def settle_hand(
     result = "won" if declarer_wins else "lost"
     return SettlementResult(
         payouts_cents=payouts,
-        summary=f"{contract_type} {result} ({declarer_points}: {120 - declarer_points}), amount {amount} cents",
+        summary=f"{contract_type} {result} ({declarer_points}: {TOTAL_CARD_POINTS - declarer_points}), amount {amount} cents",
         details={
             "contract_type": contract_type,
             "contract_suit": contract_suit,

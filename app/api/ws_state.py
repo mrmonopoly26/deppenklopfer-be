@@ -11,12 +11,36 @@ from app.models import (
     TableParticipant,
     TrickCard,
 )
-from app.services.schafkopf_rules import trump_order
+from app.services.schafkopf_rules import (
+    CONTRACT_RUFER,
+    PHASE_BIDDING,
+    PHASE_CLOSED,
+    PHASE_PLAYING,
+    PHASE_SCORING,
+    trump_order,
+)
 
 _SUIT_ORDER = {"eichel": 0, "gras": 1, "herz": 2, "schellen": 3}
-_RANK_ORDER = {"A": 0, "10": 1, "K": 2, "O": 3, "U": 4, "9": 5, "8": 6, "7": 7}
+_RANK_ORDER = {"A": 0, "10": 1, "K": 2, "O": 3, "U": 4, "9": 5}
 
-ACTIVE_HAND_PHASES = {"bidding", "playing", "scoring"}
+# ── WebSocket message/event type constants ─────────────────────────────────────
+
+WS_GAME_STATE = "game_state"
+WS_GAME_ERROR = "game_error"
+WS_LEGAL_BIDS = "legal_bids"
+WS_LEGAL_CARDS = "legal_cards"
+WS_YOU_ARE_PARTNER = "you_are_partner"
+WS_MY_HAND = "my_hand"
+WS_PARTICIPANT_JOINED = "participant_joined"
+WS_PARTICIPANT_LEFT = "participant_left"
+WS_PING = "ping"
+WS_PONG = "pong"
+WS_CHAT_MESSAGE = "chat_message"
+WS_START_HAND = "start_hand"
+WS_DECLARE_BID = "declare_bid"
+WS_PLAY_CARD = "play_card"
+
+ACTIVE_HAND_PHASES = {PHASE_BIDDING, PHASE_PLAYING, PHASE_SCORING}
 
 
 def active_hand(db: Session, table_id: str) -> GameHand | None:
@@ -47,7 +71,7 @@ def public_state(db: Session, hand: GameHand, participants: list[TableParticipan
     ).all()
 
     trick_cards: list[dict] = []
-    if hand.phase != "closed":
+    if hand.phase != PHASE_CLOSED:
         trick = db.scalar(
             select(HandTrick).where(
                 HandTrick.hand_id == hand.id,
@@ -93,7 +117,7 @@ def public_state(db: Session, hand: GameHand, participants: list[TableParticipan
         })
 
     # Partner identity is secret in Rufer until the called ace hits the table.
-    partner_revealed = hand.contract_type != "rufer" or (
+    partner_revealed = hand.contract_type != CONTRACT_RUFER or (
         hand.called_ace_suit is not None
         and db.scalar(
             select(TrickCard).where(
@@ -106,7 +130,7 @@ def public_state(db: Session, hand: GameHand, participants: list[TableParticipan
     )
 
     return {
-        "type": "game_state",
+        "type": WS_GAME_STATE,
         "hand_id": hand.id,
         "hand_number": hand.hand_number,
         "phase": hand.phase,

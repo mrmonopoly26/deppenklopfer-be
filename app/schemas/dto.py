@@ -28,7 +28,7 @@ class ChangeRequestConfirm(BaseModel):
     token: str
 
 
-GameMode = Literal["ramsch", "rufspiel", "solo", "wenz"]
+GameMode = Literal["ramsch", "rufspiel", "solo", "wenz", "geier"]
 
 
 class TableConfigPayload(BaseModel):
